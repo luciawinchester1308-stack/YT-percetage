@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Watch % — YT Progress</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap');
+
+  :root{
+    --bg: #16121f;
+    --bg-2: #1e1830;
+    --panel: #211a33;
+    --line: #352a4d;
+    --ink: #ece6f7;
+    --ink-dim: #9084b0;
+    --accent: #b98cff;
+    --accent-2: #5ee0c0;
+  }
+
+  *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body{
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 15% 0%, #2a1f42 0%, transparent 45%),
+      var(--bg);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 14px 40px;
+  }
+
+  header{
+    width: 100%;
+    max-width: 480px;
+    margin-bottom: 18px;
+  }
+
+  h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    letter-spacing: 0.01em;
+    margin: 0 0 2px;
+  }
+
+  .sub{
+    font-size: 0.72rem;
+    color: var(--ink-dim);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .card{
+    width: 100%;
+    max-width: 480px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .url-row{
+    display: flex;
+    gap: 8px;
+  }
+
+  input[type="text"]{
+    flex: 1;
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    padding: 11px 12px;
+    border-radius: 9px;
+    outline: none;
+    min-width: 0;
+  }
+  input[type="text"]:focus{ border-color: var(--accent); }
+  input[type="text"]::placeholder{ color: #5c527a; }
+
+  button{
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 0.03em;
+    border: none;
+    border-radius: 9px;
+    padding: 11px 16px;
+    background: var(--accent);
+    color: #1a1228;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  button:active{ transform: translateY(1px); }
+  button:disabled{ opacity: 0.4; }
+
+  .player-wrap{
+    width: 100%;
+    max-width: 480px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    display: none;
+  }
+  .player-wrap.active{ display: block; }
+
+  #player-box{
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+  }
+  #player-box iframe{ width: 100%; height: 100%; display: block; border: 0; }
+
+  .readout{
+    padding: 18px 16px 20px;
+  }
+
+  .pct-row{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .pct-num{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 2.6rem;
+    line-height: 1;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .pct-num span{ font-size: 1.3rem; color: var(--ink-dim); font-family: 'DM Mono', monospace; font-weight: 400; }
+
+  .time-str{
+    font-size: 0.78rem;
+    color: var(--ink-dim);
+    text-align: right;
+  }
+  .time-str b{ color: var(--ink); font-weight: 500; }
+
+  .bar-track{
+    width: 100%;
+    height: 6px;
+    background: var(--bg-2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    border: 1px solid var(--line);
+  }
+  .bar-fill{
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    transition: width 0.2s linear;
+  }
+
+  .status-row{
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--ink-dim);
+    letter-spacing: 0.04em;
+  }
+
+  .dot{
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ink-dim);
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .dot.playing{ background: var(--accent-2); }
+
+  .empty-note{
+    font-size: 0.78rem;
+    color: var(--ink-dim);
+    line-height: 1.5;
+    margin-top: 4px;
+  }
+
+  .error-msg{
+    color: #ff9e9e;
+    font-size: 0.78rem;
+    margin-top: 10px;
+    display: none;
+  }
+  .error-msg.show{ display: block; }
+
+  .resume-note{
+    font-size: 0.78rem;
+    color: var(--accent-2);
+    margin-top: 10px;
+    display: none;
+  }
+  .resume-note.show{ display: block; }
+  .resume-note button{
+    background: transparent;
+    border: 1px solid var(--accent-2);
+    color: var(--accent-2);
+    padding: 6px 12px;
+    font-size: 0.72rem;
+    border-radius: 7px;
+    margin-left: 8px;
+  }
+
+  .history-head{
+    font-size: 0.68rem;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+
+  .history-item{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.78rem;
+  }
+  .history-item:last-child{ border-bottom: none; }
+
+  .history-item .h-info{
+    flex: 1;
+    min-width: 0;
+    margin-right: 10px;
+  }
+  .history-item .h-pct{
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .history-item .h-id{
+    color: var(--ink-dim);
+    font-size: 0.7rem;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .history-item button{
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 6px 12px;
+    font-size: 0.72rem;
+    border-radius: 7px;
+    flex-shrink: 0;
+  }
+  .history-item .h-clear{
+    background: transparent;
+    border: none;
+    color: var(--ink-dim);
+    padding: 6px 8px;
+    font-size: 0.9rem;
+  }
+
+  .bookmark-row{
+    margin-top: 14px;
+  }
+  #pinBtn{
+    width: 100%;
+    background: var(--bg-2);
+    border: 1px dashed var(--line);
+    color: var(--accent-2);
+    padding: 10px;
+    font-size: 0.76rem;
+    border-radius: 9px;
+  }
+  #pinBtn:active{ border-color: var(--accent-2); }
+
+  .bookmark-list{
+    margin-top: 10px;
+  }
+  .bookmark-item{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.78rem;
+  }
+  .bookmark-item:last-child{ border-bottom: none; }
+  .bookmark-item .b-time{
+    color: var(--ink);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .bookmark-item .b-pct{
+    color: var(--ink-dim);
+    font-size: 0.7rem;
+    margin-left: 6px;
+  }
+  .bookmark-item .b-actions button{
+    background: transparent;
+    border: none;
+    color: var(--ink-dim);
+    padding: 4px 8px;
+    font-size: 0.76rem;
+  }
+  .bookmark-item .b-jump{
+    color: var(--accent-2) !important;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Watch %</h1>
+  <div class="sub">Paste a link · read the number</div>
+</header>
+
+<div class="card">
+  <div class="url-row">
+    <input type="text" id="urlInput" placeholder="Paste YouTube URL…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button id="loadBtn">Load</button>
+  </div>
+  <div class="error-msg" id="errorMsg">Couldn't read that link. Try a full youtube.com or youtu.be URL.</div>
+  <div class="empty-note" id="emptyNote">Works with any public video link — full URL, youtu.be, or Shorts.</div>
+  <div class="resume-note" id="resumeNote"></div>
+</div>
+
+<div class="card" id="historyCard" style="display:none;">
+  <div class="history-head">Continue watching</div>
+  <div id="historyList"></div>
+</div>
+
+<div class="player-wrap" id="playerWrap">
+  <div id="player-box"><div id="player"></div></div>
+  <div class="readout">
+    <div class="pct-row">
+      <div class="pct-num" id="pctNum">0<span>.0%</span></div>
+      <div class="time-str" id="timeStr"><b>0:00</b> / 0:00</div>
+    </div>
+    <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+    <div class="status-row">
+      <span><span class="dot" id="statusDot"></span><span id="statusText">idle</span></span>
+      <span id="rateText"></span>
+    </div>
+    <div class="bookmark-row">
+      <button id="pinBtn">+ Pin this moment</button>
+    </div>
+    <div class="bookmark-list" id="bookmarkList"></div>
+  </div>
+</div>
+
+<script>
+  let player = null;
+  let apiReady = false;
+  let tickHandle = null;
+  let pendingVideoId = null;
+  let currentVideoId = null;
+  let lastSaveTime = 0;
+
+  const STORAGE_KEY = 'yt-watch-progress';
+
+  function loadStore(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    }catch(e){ return {}; }
+  }
+
+  function saveStore(store){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    }catch(e){}
+  }
+
+  function saveProgress(videoId, current, duration, title){
+    const store = loadStore();
+    store[videoId] = {
+      current: current,
+      duration: duration,
+      title: title || videoId,
+      updatedAt: Date.now()
+    };
+    saveStore(store);
+  }
+
+  function getProgress(videoId){
+    const store = loadStore();
+    return store[videoId] || null;
+  }
+
+  function clearProgress(videoId){
+    const store = loadStore();
+    delete store[videoId];
+    saveStore(store);
+    renderHistory();
+  }
+
+  const BOOKMARK_KEY = 'yt-watch-bookmarks';
+
+  function loadBookmarkStore(){
+    try{
+      const raw = localStorage.getItem(BOOKMARK_KEY);
+      return raw ? JSON.parse(raw) : {};
+    }catch(e){ return {}; }
+  }
+
+  function saveBookmarkStore(store){
+    try{
+      localStorage.setItem(BOOKMARK_KEY, JSON.stringify(store));
+    }catch(e){}
+  }
+
+  function addBookmark(videoId, time, duration){
+    const store = loadBookmarkStore();
+    if(!store[videoId]) store[videoId] = [];
+    store[videoId].push({ time: time, duration: duration, createdAt: Date.now() });
+    store[videoId].sort((a,b) => a.time - b.time);
+    saveBookmarkStore(store);
+    renderBookmarks(videoId);
+  }
+
+  function removeBookmark(videoId, index){
+    const store = loadBookmarkStore();
+    if(store[videoId]){
+      store[videoId].splice(index, 1);
+      if(store[videoId].length === 0) delete store[videoId];
+      saveBookmarkStore(store);
+    }
+    renderBookmarks(videoId);
+  }
+
+  function renderBookmarks(videoId){
+    const store = loadBookmarkStore();
+    const marks = store[videoId] || [];
+    const list = document.getElementById('bookmarkList');
+    list.innerHTML = '';
+
+    marks.forEach((mark, i) => {
+      const pct = mark.duration ? Math.floor((mark.time / mark.duration) * 100) : 0;
+      const row = document.createElement('div');
+      row.className = 'bookmark-item';
+      row.innerHTML = `
+        <div><span class="b-time">${fmtTime(mark.time)}</span><span class="b-pct">${pct}%</span></div>
+        <div class="b-actions">
+          <button class="b-jump">Jump</button>
+          <button class="b-del">✕</button>
+        </div>
+      `;
+      row.querySelector('.b-jump').addEventListener('click', () => {
+        if(player && typeof player.seekTo === 'function'){
+          player.seekTo(mark.time, true);
+        }
+      });
+      row.querySelector('.b-del').addEventListener('click', () => removeBookmark(videoId, i));
+      list.appendChild(row);
+    });
+  }
+
+  function renderHistory(){
+    const store = loadStore();
+    const ids = Object.keys(store).sort((a,b) => store[b].updatedAt - store[a].updatedAt).slice(0, 8);
+    const card = document.getElementById('historyCard');
+    const list = document.getElementById('historyList');
+
+    if(ids.length === 0){
+      card.style.display = 'none';
+      return;
+    }
+
+    card.style.display = 'block';
+    list.innerHTML = '';
+
+    ids.forEach(id => {
+      const entry = store[id];
+      const pct = entry.duration ? Math.floor((entry.current / entry.duration) * 100) : 0;
+
+      const row = document.createElement('div');
+      row.className = 'history-item';
+      row.innerHTML = `
+        <div class="h-info">
+          <span class="h-pct">${pct}%</span> · ${fmtTime(entry.current)} / ${fmtTime(entry.duration)}
+          <span class="h-id">${entry.title}</span>
+        </div>
+        <button class="h-resume">Resume</button>
+        <button class="h-clear">✕</button>
+      `;
+      row.querySelector('.h-resume').addEventListener('click', () => {
+        document.getElementById('urlInput').value = 'https://youtu.be/' + id;
+        loadVideo(entry.current);
+      });
+      row.querySelector('.h-clear').addEventListener('click', () => clearProgress(id));
+      list.appendChild(row);
+    });
+  }
+
+  function extractVideoId(raw){
+    try{
+      const url = new URL(raw.trim());
+      const host = url.hostname.replace('www.', '');
+
+      if(host === 'youtu.be'){
+        return url.pathname.slice(1).split('/')[0] || null;
+      }
+      if(host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com'){
+        if(url.pathname === '/watch'){
+          return url.searchParams.get('v');
+        }
+        if(url.pathname.startsWith('/shorts/')){
+          return url.pathname.split('/')[2] || null;
+        }
+        if(url.pathname.startsWith('/embed/')){
+          return url.pathname.split('/')[2] || null;
+        }
+        if(url.pathname.startsWith('/live/')){
+          return url.pathname.split('/')[2] || null;
+        }
+      }
+      return null;
+    }catch(e){
+      return null;
+    }
+  }
+
+  function fmtTime(sec){
+    if(!isFinite(sec) || sec < 0) sec = 0;
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  function onYouTubeIframeAPIReady(){
+    apiReady = true;
+    if(pendingVideoId){
+      createPlayer(pendingVideoId, window._pendingStart || 0);
+      pendingVideoId = null;
+      window._pendingStart = 0;
+    }
+  }
+  window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+
+  function createPlayer(videoId, startSeconds){
+    document.getElementById('playerWrap').classList.add('active');
+    currentVideoId = videoId;
+    const start = startSeconds || 0;
+
+    renderBookmarks(videoId);
+
+    if(player){
+      player.loadVideoById({ videoId: videoId, startSeconds: start });
+      return;
+    }
+
+    player = new YT.Player('player', {
+      videoId: videoId,
+      playerVars: { playsinline: 1, rel: 0, start: Math.floor(start) },
+      events: {
+        onReady: function(){ startTick(); },
+        onStateChange: onPlayerStateChange
+      }
+    });
+  }
+
+  function onPlayerStateChange(e){
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+
+    if(e.data === YT.PlayerState.PLAYING){
+      dot.classList.add('playing');
+      text.textContent = 'playing';
+    } else if(e.data === YT.PlayerState.PAUSED){
+      dot.classList.remove('playing');
+      text.textContent = 'paused';
+    } else if(e.data === YT.PlayerState.ENDED){
+      dot.classList.remove('playing');
+      text.textContent = 'ended';
+    } else if(e.data === YT.PlayerState.BUFFERING){
+      text.textContent = 'buffering';
+    }
+  }
+
+  function startTick(){
+    if(tickHandle) clearInterval(tickHandle);
+    tickHandle = setInterval(updateReadout, 200);
+    updateReadout();
+  }
+
+  function updateReadout(){
+    if(!player || typeof player.getCurrentTime !== 'function') return;
+
+    let current, duration;
+    try{
+      current = player.getCurrentTime();
+      duration = player.getDuration();
+    }catch(e){ return; }
+
+    if(!duration || duration <= 0) return;
+
+    const pct = Math.min(100, (current / duration) * 100);
+    const whole = Math.floor(pct);
+    const decimal = Math.floor((pct - whole) * 10);
+
+    document.getElementById('pctNum').innerHTML = whole + '<span>.' + decimal + '%</span>';
+    document.getElementById('timeStr').innerHTML = '<b>' + fmtTime(current) + '</b> / ' + fmtTime(duration);
+    document.getElementById('barFill').style.width = pct + '%';
+
+    try{
+      const rate = player.getPlaybackRate();
+      document.getElementById('rateText').textContent = rate !== 1 ? rate + 'x' : '';
+    }catch(e){}
+
+    const now = Date.now();
+    if(currentVideoId && now - lastSaveTime > 3000){
+      lastSaveTime = now;
+      let title = currentVideoId;
+      try{
+        const data = player.getVideoData();
+        if(data && data.title) title = data.title;
+      }catch(e){}
+      saveProgress(currentVideoId, current, duration, title);
+      renderHistory();
+    }
+  }
+
+  function loadVideo(forceStart){
+    const raw = document.getElementById('urlInput').value;
+    const errorMsg = document.getElementById('errorMsg');
+    const emptyNote = document.getElementById('emptyNote');
+    const resumeNote = document.getElementById('resumeNote');
+
+    if(!raw.trim()){
+      return;
+    }
+
+    const videoId = extractVideoId(raw);
+
+    if(!videoId){
+      errorMsg.classList.add('show');
+      emptyNote.style.display = 'none';
+      return;
+    }
+
+    errorMsg.classList.remove('show');
+    resumeNote.classList.remove('show');
+
+    let startSeconds = typeof forceStart === 'number' ? forceStart : 0;
+
+    if(typeof forceStart !== 'number'){
+      const saved = getProgress(videoId);
+      if(saved && saved.current > 5 && saved.duration - saved.current > 5){
+        const pct = Math.floor((saved.current / saved.duration) * 100);
+        resumeNote.classList.add('show');
+        resumeNote.innerHTML = `You left off at ${pct}% (${fmtTime(saved.current)})<button id="resumeBtn">Resume</button>`;
+        document.getElementById('resumeBtn').addEventListener('click', () => {
+          resumeNote.classList.remove('show');
+          startPlayer(videoId, saved.current);
+        });
+        // still start from beginning if they ignore resume and just load
+      }
+    }
+
+    startPlayer(videoId, startSeconds);
+  }
+
+  function startPlayer(videoId, startSeconds){
+    if(apiReady){
+      createPlayer(videoId, startSeconds);
+    }else{
+      pendingVideoId = videoId;
+      window._pendingStart = startSeconds;
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.body.appendChild(tag);
+    }
+  }
+
+  document.getElementById('loadBtn').addEventListener('click', () => loadVideo());
+  document.getElementById('urlInput').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') loadVideo();
+  });
+
+  document.getElementById('pinBtn').addEventListener('click', () => {
+    if(!player || !currentVideoId || typeof player.getCurrentTime !== 'function') return;
+    let current, duration;
+    try{
+      current = player.getCurrentTime();
+      duration = player.getDuration();
+    }catch(e){ return; }
+    addBookmark(currentVideoId, current, duration);
+  });
+
+  renderHistory();
+</script>
+
+</body>
+</html>
