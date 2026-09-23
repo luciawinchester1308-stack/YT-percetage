@@ -772,7 +772,7 @@
 
 <div class="player-wrap" id="playerWrap">
   <div id="player-box">
-    <div id="player"></div>
+    <div id="ytPlayerHost"></div>
     <video id="localVideo" playsinline style="display:none;"></video>
     <audio id="localAudio" style="display:none;"></audio>
     <img id="coverImg" class="cover-img" style="display:none;" alt="">
@@ -1073,7 +1073,7 @@
       return;
     }
 
-    player = new YT.Player('player', {
+    player = new YT.Player('ytPlayerHost', {
       videoId: videoId,
       playerVars: { playsinline: 1, rel: 0, start: Math.floor(start) },
       events: {
@@ -1565,7 +1565,7 @@
     const videoEl = document.getElementById('localVideo');
     const audioEl = document.getElementById('localAudio');
     const playerBox = document.getElementById('player-box');
-    const ytDiv = document.getElementById('player');
+    const ytDiv = document.getElementById('ytPlayerHost');
 
     // hide YT div, show the right native element
     ytDiv.style.display = 'none';
